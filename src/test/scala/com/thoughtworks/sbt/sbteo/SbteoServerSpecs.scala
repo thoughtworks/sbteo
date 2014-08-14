@@ -26,15 +26,23 @@ trait StubLogger {
   }
 }
 
-trait GivenSocketServer extends StubLogger with After {
-  var afters: List[Function[Unit, Unit]] = List()
+trait TapAfter extends After {
+  private var afters: List[Function[Unit, Unit]] = List()
 
-  private def tapAfter[A](a: A, f: Function[A, Unit]) = {
+  def tapAfter[A](a: A, f: Function[A, Unit]) = {
     afters = afters :+ ((_: Unit) => {
       f(a)
     })
     a
   }
+
+  def after = {
+    afters.foreach(f => f())
+  }
+
+}
+
+trait GivenSocketServer extends StubLogger with TapAfter {
 
   lazy val socketServer: SbteoServer = {
     tapAfter[SbteoServer](new SbteoServer(aStubLogger), _ => {})
@@ -47,8 +55,15 @@ trait GivenSocketServer extends StubLogger with After {
     })
   }
 
-  def after = {
-    afters.foreach(f => f())
+}
+
+trait GivenApiClient {
+  lazy val broker: Broker[String] = {
+    new Broker[String]
+  }
+
+  def futureClient(): Future[WebSocket] = {
+    HttpWebSocket.open(broker.recv, "ws://localhost:8888/sbt/")
   }
 }
 
@@ -65,44 +80,56 @@ class SteoServerSpecification extends Specification {
       "has a server" in new GivenSocketServer {
         startedServer.server must beSome
       }
-      "allows web socket connections" in new GivenSocketServer {
+      "allows web socket connections" in new GivenSocketServer with GivenApiClient {
         startedServer
-        val out = new Broker[String]
-
-        val client: Future[WebSocket] = HttpWebSocket.open(out.recv, "ws://localhost:8888/sbt/")
-        val clientWs: WebSocket = result(client, fromSeconds(1))
+        val clientWs: WebSocket = result(futureClient(), fromSeconds(1))
         clientWs.close()
       }
 
-      "responds to ping" in new GivenSocketServer {
+      "responds to ping" in new GivenSocketServer with GivenApiClient {
         startedServer
-        val out = new Broker[String]
-
         val requestId: UUID = UUID.randomUUID()
         val expectedRequest: String = "\"requestId\":\"%s\"".format(requestId)
-        var expectedType: String = s""""type":"ping""""
+        var expectedType: String = """"type":"ping""""
 
-        private val payload: String = result(HttpWebSocket.open(out.recv, "ws://localhost:8888/sbt/") flatMap { ws =>
-          out !! s"""{"requestId":"$requestId","type":"ping"}"""
+        private val payload: String = result(futureClient() flatMap { ws =>
+          broker !! s"""{"requestId":"$requestId","type":"ping"}"""
           ws.messages.?
         }, fromSeconds(1))
 
         payload must contain(expectedRequest)
         payload must contain(expectedType)
         payload must not contain (""""error":""")
+      }
 
+      "responds to autocomplete" in new GivenSocketServer with GivenApiClient{
+        startedServer
+        val requestId: UUID = UUID.randomUUID()
+        val payload = result(futureClient() flatMap { ws =>
+          broker !!
+            s"""{
+               |"requestId":"$requestId",
+               |"type":"auto-complete",
+               |"doc":[],
+               |"position":{
+               |   "row":0,
+               |   "column":0
+               |  }
+               |}""".stripMargin
+          ws.messages.?
+        }, fromSeconds(1))
+
+        payload must contain(""""type":"auto-complete"""")
+        payload must contain(""""completions":[""")
+        payload must not contain """"error"""
       }
 
       "when stopped" should {
-        "not accept socket connections" in new GivenSocketServer {
+        "not accept socket connections" in new GivenSocketServer with GivenApiClient{
           startedServer.stop()
 
-          val out = new Broker[String]
-          val client: Future[WebSocket] = HttpWebSocket.open(out.recv, "ws://localhost:8888/sbt/")
-
           def attemptConnect(): Unit = {
-            val webSocket: WebSocket = result(client, fromSeconds(10))
-            webSocket.close()
+            val webSocket: WebSocket = result(futureClient(), fromSeconds(10))
           }
 
           attemptConnect must throwA[ChannelWriteException]
