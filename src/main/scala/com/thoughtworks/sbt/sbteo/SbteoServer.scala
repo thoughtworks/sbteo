@@ -1,7 +1,7 @@
 package com.thoughtworks.sbt.sbteo
 
-import java.text.{DateFormat, SimpleDateFormat}
-import java.util.{Calendar, GregorianCalendar}
+import java.text.SimpleDateFormat
+import java.util.GregorianCalendar
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
@@ -10,19 +10,28 @@ import org.mashupbots.socko.events.{HttpRequestEvent, SockoEvent, WebSocketFrame
 import org.mashupbots.socko.routes._
 import org.mashupbots.socko.webserver.{WebServer, WebServerConfig}
 
-object WebSocketHandler {
+object SbteoWireProtocolActor {
   val dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
   val time = new GregorianCalendar()
 
   def props(): Props = {
-    Props(new WebSocketHandler)
+    Props(new SbteoWireProtocolActor)
   }
 }
 
-class WebSocketHandler extends Actor with JsonApi {
-  def emitJson(event: WebSocketFrameEvent)(json: JValue): Unit = {
-    event.writeText(pretty(render(json)))
+trait JsonProtocol {
+  def emitJson(writer: Function[String, Unit])(json: JValue): Unit = {
+    writer(pretty(render(json)))
   }
+
+  def jsonApi(req: JValue, next: Function[JValue, Unit]): Unit
+
+  def handleJson(json: String, writer: Function[String, Unit]): Unit = {
+    jsonApi(parse(json), emitJson(writer))
+  }
+}
+
+class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with Api {
 
   def receive = {
     case event: HttpRequestEvent =>
@@ -30,7 +39,7 @@ class WebSocketHandler extends Actor with JsonApi {
       context.stop(self)
     case event: WebSocketFrameEvent =>
       if (event.isText) {
-        jsonApi(parse(event.readText()), emitJson(event))
+        handleJson(event.readText(), event.writeText)
       }
       context.stop(self)
     case _ =>
@@ -46,7 +55,7 @@ object SbteoServer {
           wsHandshake.authorize()
       }
       case WebSocketFrame(wsFrame) =>
-        actorSystem.actorOf(WebSocketHandler.props()) ! wsFrame
+        actorSystem.actorOf(SbteoWireProtocolActor.props()) ! wsFrame
     })
   }
 }

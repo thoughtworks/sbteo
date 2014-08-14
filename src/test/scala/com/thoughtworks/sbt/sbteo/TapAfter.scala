@@ -1,8 +1,7 @@
 package com.thoughtworks.sbt.sbteo
 
-/**
- * Created by ndrew on 14/08/2014.
- */
+import org.specs2.mutable.After
+
 trait TapAfter extends After {
   private var afters: List[Function[Unit, Unit]] = List()
 

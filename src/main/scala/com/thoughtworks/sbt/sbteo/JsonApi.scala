@@ -1,8 +1,11 @@
 package com.thoughtworks.sbt.sbteo
 
-/**
- * Created by ndrew on 14/08/2014.
- */
+import java.util.UUID
+
+import com.thoughtworks.sbt.sbteo.Api._
+import com.thoughtworks.sbt.sbteo.JsonApi._
+import net.liftweb.json._
+
 trait JsonApi {
   implicit val formats = net.liftweb.json.DefaultFormats
 
