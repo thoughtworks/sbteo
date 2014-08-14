@@ -6,14 +6,19 @@ name := "sbteo"
 
 organization := "com.thoughtworks"
 
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.10.2"
+libraryDependencies ++= Seq(
+  "org.scala-lang" % "scala-compiler" % "2.10.2",
+  "org.mashupbots.socko" % "socko-webserver_2.10" % "0.4.2",
+  "org.javassist" % "javassist" % "3.18.2-GA",
+  "net.liftweb" %% "lift-json" % "2.5.1"
+)
 
-libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.2.1" % "test"
+resolvers += "com.github.sprsquish" at "https://raw.github.com/sprsquish/mvn-repo/master"
 
-libraryDependencies += "org.mashupbots.socko" % "socko-webserver_2.10" % "0.4.2"
-
-libraryDependencies += "org.javassist" % "javassist" % "3.18.2-GA"
-
+libraryDependencies ++= Seq(
+  "com.github.sprsquish" %% "finagle-websockets" % "6.8.1" % "test",
+  "org.specs2" %% "specs2" % "2.4" % "test"
+)
 //releaseSettings
 
 // publishing

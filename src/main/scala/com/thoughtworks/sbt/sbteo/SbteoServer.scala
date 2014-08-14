@@ -4,7 +4,8 @@ import java.text.{DateFormat, SimpleDateFormat}
 import java.util.{Calendar, GregorianCalendar}
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.ConfigFactory
+import net.liftweb.json._
 import org.mashupbots.socko.events.{HttpRequestEvent, SockoEvent, WebSocketFrameEvent}
 import org.mashupbots.socko.routes._
 import org.mashupbots.socko.webserver.{WebServer, WebServerConfig}
@@ -14,17 +15,23 @@ object WebSocketHandler {
   val time = new GregorianCalendar()
 
   def props(): Props = {
-    Props(new WebSocketHandler(dateFormatter, time))
+    Props(new WebSocketHandler)
   }
 }
 
-class WebSocketHandler(val dateFormat: DateFormat, val now: Calendar) extends Actor {
+class WebSocketHandler extends Actor with JsonApi {
+  def emitJson(event: WebSocketFrameEvent)(json: JValue): Unit = {
+    event.writeText(pretty(render(json)))
+  }
+
   def receive = {
     case event: HttpRequestEvent =>
       event.response.write("sbteo")
       context.stop(self)
     case event: WebSocketFrameEvent =>
-      event.writeText(dateFormat.format(now.getTime) + " ")
+      if (event.isText) {
+        jsonApi(parse(event.readText()), emitJson(event))
+      }
       context.stop(self)
     case _ =>
       context.stop(self)
@@ -43,6 +50,7 @@ object SbteoServer {
     })
   }
 }
+
 class SbteoServer(val logger: sbt.Logger, val server: Option[WebServer] = None) {
   def start(): SbteoServer = {
     server match {
@@ -60,3 +68,4 @@ class SbteoServer(val logger: sbt.Logger, val server: Option[WebServer] = None) 
   }
 
 }
+
