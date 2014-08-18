@@ -34,7 +34,7 @@ class SbteoServerSpecs extends Specification {
 
       "responds to ping" in new GivenSocketServer with GivenApiClient {
         startedServer
-        val requestId = UUID.randomUUID().toString()
+        val requestId = UUID.randomUUID().toString
 
         private val payload: String = result(futureClient() flatMap { ws =>
           broker !!
@@ -55,7 +55,7 @@ class SbteoServerSpecs extends Specification {
 
       "responds to autocomplete" in new GivenSocketServer with GivenApiClient {
         startedServer
-        val requestId = UUID.randomUUID().toString()
+        val requestId:String = UUID.randomUUID().toString
         val payload = result(futureClient() flatMap { ws =>
           broker !!
             compact(render(
@@ -63,10 +63,10 @@ class SbteoServerSpecs extends Specification {
                 ("type" -> "auto-complete") ~
                 ("doc" -> List("")) ~
                 ("position" ->
-                  ("row" -> 0) ~
-                    ("column" -> 0))))
+                  ("row" -> 1) ~
+                    ("column" -> 1))))
           ws.messages.?
-        }, fromSeconds(1))
+        }, fromSeconds(10))
 
         val json = parse(payload)
 
@@ -75,6 +75,37 @@ class SbteoServerSpecs extends Specification {
         (json \ "type" values) must beEqualTo("auto-complete")
 
         private val completions: List[JValue] = (json \ "completions").children
+
+        completions must beEmpty
+
+      }
+
+      "autocompletes basic scala code" in new GivenSocketServer with GivenApiClient with GivenBasicSource {
+        startedServer
+
+        val requestId:String = UUID.randomUUID().toString
+        val payload = result(futureClient() flatMap { ws =>
+          val docValue: List[String] = sourceDocument.split("\n").toList
+          broker !!
+            compact(render(
+              ("requestId" -> requestId) ~
+                ("type" -> "auto-complete") ~
+                ("doc" -> docValue) ~
+                ("position" ->
+                  ("row" -> 1) ~
+                    ("column" -> 1))))
+          ws.messages.?
+        }, fromSeconds(10))
+
+        val json = parse(payload)
+
+        json \ "error" must beEqualTo(JNothing)
+
+        (json \ "type" values) must beEqualTo("auto-complete")
+
+        private val completions: List[JValue] = (json \ "completions").children
+
+        completions must not beEmpty
 
         ((completions(0) \ "symbol" values) must not).beNull
 

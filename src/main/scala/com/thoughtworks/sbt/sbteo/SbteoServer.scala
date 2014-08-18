@@ -31,7 +31,7 @@ trait JsonProtocol {
   }
 }
 
-class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with Api with StubApi {
+class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup{
 
   def receive = {
     case event: HttpRequestEvent =>
@@ -45,6 +45,12 @@ class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with A
     case _ =>
       context.stop(self)
   }
+
+  override def postStop() : Unit = {
+    cleanup()
+  }
+
+
 }
 
 object SbteoServer {

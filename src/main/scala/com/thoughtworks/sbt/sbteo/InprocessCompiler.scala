@@ -56,7 +56,8 @@ class InprocessCompiler(compiler: Global) {
 
     // inspired by scala-ide
     // https://github.com/scala-ide/scala-ide/blob/4.0.0-m3-luna/org.scala-ide.sdt.core/src/org/scalaide/core/completion/ScalaCompletions.scala#L170
-    askTypeAt(code, p, p) { (tree, pos) ⇒ tree match {
+    askTypeAt(code, p, p) {
+      (tree, pos) ⇒ tree match {
       case compiler.New(name) ⇒ typeCompletion(name.pos)
       case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒
         typeCompletion(qualifier.pos)
@@ -72,7 +73,7 @@ class InprocessCompiler(compiler: Global) {
     }
     } {
       pos => Some(scopeCompletion(pos))
-    }.getOrElse(Right(null))
+    }.getOrElse(Left(List()))
   }
 
   def typeAt(code: String, start: Int, end: Int): Option[TypeAtResponse] = {
@@ -109,7 +110,10 @@ class InprocessCompiler(compiler: Global) {
 
       response.get match {
         case Left(tree) ⇒ Some(f(tree, rpos))
-        case Right(e) ⇒ e.printStackTrace(); fb(rpos)
+        case Right(e) ⇒ {
+          e.printStackTrace()
+          fb(rpos)
+        };
       }
     }
   }

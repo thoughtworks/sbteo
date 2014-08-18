@@ -13,16 +13,24 @@ object Api {
     
     def positionIn(sourceDocument: Seq[String]): Int = {
       def truncateRow(s:String, idx:Int): Int ={
+        val hasPreviousLine = if(idx == 0) 0 else 1
         if( idx < zeroIndexedRow){
-          s.length() +1
+          s.length()
         }
         else {
           s.take(zeroIndexedCol).length()
-        }
+        } + hasPreviousLine
       }
       val sumRowLength: (Int, (String, Int)) => Int = {
-        case (acc, (e, i)) => acc + truncateRow(e, i)
-        case (acc, _) => acc
+        case (acc, (e, i)) => {
+          acc + truncateRow(e, i)
+        }
+        case (acc, _) => {
+          acc
+        }
+        case _ => {
+          0
+        }
       }
       sourceDocument.take(row).view.zipWithIndex.foldLeft(1)(sumRowLength)
     }
