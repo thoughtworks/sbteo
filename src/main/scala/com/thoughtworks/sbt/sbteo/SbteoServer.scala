@@ -31,7 +31,7 @@ trait JsonProtocol {
   }
 }
 
-class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup{
+class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup {
 
   def receive = {
     case event: HttpRequestEvent =>
@@ -46,7 +46,7 @@ class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with R
       context.stop(self)
   }
 
-  override def postStop() : Unit = {
+  override def postStop(): Unit = {
     cleanup()
   }
 
@@ -66,13 +66,40 @@ object SbteoServer {
   }
 }
 
+
 class SbteoServer(val logger: sbt.Logger, val server: Option[WebServer] = None) {
+
+  implicit class Regex(sc: StringContext) {
+    def r = new util.matching.Regex(sc.parts.mkString, sc.parts.tail.map(_ => "x"): _*)
+  }
+
+  type EndpointType = Tuple2[String, Int]
+
+  import scala.collection.JavaConversions._
+
+  lazy val endpoint: EndpointType = {
+    val endpointValue: Option[String] = mapAsScalaMap(System.getenv()).get("SBTEO_ENDPOINT").orElse {
+      mapAsScalaMap(System.getProperties).get("sbteo.endpoint").map[String] { s => s.toString}
+    }
+    def tryParse(s: String): Option[EndpointType] = {
+      s match {
+        case r"(\w*)$iface\:(\d+)$port" => Some((iface, port.toInt))
+        case r"(\w*)$iface" => Some((iface, 8888))
+        case r":(\d+)" => Some(("locahost", 8888))
+        case _ => None
+      }
+    }
+    endpointValue flatMap tryParse getOrElse (("localhost", 8888))
+  }
+
   def start(): SbteoServer = {
     server match {
       case Some(webServer) => this
       case None =>
         val actorSystem: ActorSystem = ActorSystem("SbteoServerActorSystem", ConfigFactory.load(), this.getClass.getClassLoader)
-        val webServer: WebServer = new WebServer(new WebServerConfig(), SbteoServer.routes(actorSystem), actorSystem)
+        println(endpoint)
+        val config: WebServerConfig = new WebServerConfig(port = endpoint._2, hostname = endpoint._1)
+        val webServer: WebServer = new WebServer(config, SbteoServer.routes(actorSystem), actorSystem)
         webServer.start()
         new SbteoServer(this.logger, Option(webServer))
     }

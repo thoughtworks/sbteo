@@ -10,7 +10,7 @@ trait GivenApiClient {
     new Broker[String]
   }
 
-  def futureClient(): Future[WebSocket] = {
-    HttpWebSocket.open(broker.recv, "ws://localhost:8888/sbt/")
+  def futureClient(port: Int = 8888, iface: String = "localhost"): Future[WebSocket] = {
+    HttpWebSocket.open(broker.recv, "ws://%s:%d/sbt/".format(iface, port))
   }
 }

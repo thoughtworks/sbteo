@@ -73,7 +73,6 @@ class CursorPositionSpecs extends Specification {
         "near EOL (explicit)" in new Subject {
           positionOf(2, 10) must beEqualTo(11)
         }
-
         "on EOL" in new Subject {
           positionOf(2, 11) must be_==(positionOf(2, 10))
         }

@@ -9,7 +9,7 @@ trait GivenSocketServer extends StubLogger with TapAfter {
     tapAfter[SbteoServer](new SbteoServer(aStubLogger), _ => {})
   }
 
-  lazy val startedServer: SbteoServer = {
+  lazy val givenStartedServer: SbteoServer = {
     tapAfter[SbteoServer](socketServer.start(), s => {
       System.out.println("stopping");
       s.stop()

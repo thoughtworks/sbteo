@@ -3,18 +3,32 @@ package com.thoughtworks.sbt.sbteo
 import java.util.UUID
 
 import com.thoughtworks.sbt.sbteo.steps._
+import com.twitter.concurrent.Broker
 import com.twitter.finagle.ChannelWriteException
 import com.twitter.finagle.websocket.WebSocket
 import com.twitter.util.Await.result
 import com.twitter.util.Duration.fromSeconds
+import com.twitter.util.Future
 import net.liftweb.json.JsonAST.{JNothing, JValue}
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json.{compact, parse, render}
 import org.specs2.mutable._
 
+import scala.collection.JavaConversions._
+
 
 class SbteoServerSpecs extends Specification {
   sequential
+
+  def clientPing(broker: Broker[String], id: String): (WebSocket) => Future[String] = {
+    ws =>
+      broker !!
+        compact(render(
+          ("requestId" -> id) ~
+            ("type" -> "ping")))
+
+      ws.messages.?
+  }
 
   "A web socket server" should {
     "when not started" should {
@@ -22,28 +36,52 @@ class SbteoServerSpecs extends Specification {
         socketServer.server must beNone
       }
     }
+    "when configured using environment vars" should {
+      trait GivenRuntimeConfiguration extends TapAfter {
+        private def immutablePropsRightNow = {
+          mapAsScalaMap(System.getProperties).toMap
+        }
+
+        def givenSystemProperty(name: String, value: String): Unit = {
+          type KeyType = AnyRef
+
+          tapAfter(immutablePropsRightNow, { propsThen: Map[KeyType, AnyRef] =>
+            val newKeys = immutablePropsRightNow.keySet -- propsThen.keySet
+            propsThen.toSeq.map {
+              case (k: KeyType, v: AnyRef) => System.setProperty(k.toString, v.toString)
+            }
+            newKeys.foreach { k => System.clearProperty(k.toString)}
+          })
+          System.setProperty(name, value)
+        }
+      }
+      "when started" should {
+        "respond to ping on different socket" in new GivenSocketServer with GivenApiClient with GivenRuntimeConfiguration {
+          givenSystemProperty("sbteo.endpoint", "localhost:8889")
+          givenStartedServer
+          val r = result(futureClient(port = 8889)
+            flatMap clientPing(broker, UUID.randomUUID().toString)
+            map { s => parse(s)}, fromSeconds(1))
+
+          r \ "error" must beEqualTo(JNothing)
+        }
+      }
+    }
     "when started" should {
       "has a server" in new GivenSocketServer {
-        startedServer.server must beSome
+        givenStartedServer.server must beSome
       }
       "allows web socket connections" in new GivenSocketServer with GivenApiClient {
-        startedServer
+        givenStartedServer
         val clientWs: WebSocket = result(futureClient(), fromSeconds(1))
         clientWs.close()
       }
 
       "responds to ping" in new GivenSocketServer with GivenApiClient {
-        startedServer
+        givenStartedServer
         val requestId = UUID.randomUUID().toString
 
-        private val payload: String = result(futureClient() flatMap { ws =>
-          broker !!
-            compact(render(
-              ("requestId" -> requestId) ~
-                ("type" -> "ping")))
-
-          ws.messages.?
-        }, fromSeconds(1))
+        private val payload: String = result(futureClient() flatMap clientPing(broker, requestId), fromSeconds(1))
 
         var json = parse(payload)
         (json \ "requestId" values) must beEqualTo(requestId)
@@ -54,8 +92,8 @@ class SbteoServerSpecs extends Specification {
       }
 
       "responds to autocomplete" in new GivenSocketServer with GivenApiClient {
-        startedServer
-        val requestId:String = UUID.randomUUID().toString
+        givenStartedServer
+        val requestId: String = UUID.randomUUID().toString
         val payload = result(futureClient() flatMap { ws =>
           broker !!
             compact(render(
@@ -81,9 +119,9 @@ class SbteoServerSpecs extends Specification {
       }
 
       "autocompletes basic scala code" in new GivenSocketServer with GivenApiClient with GivenBasicSource {
-        startedServer
+        givenStartedServer
 
-        val requestId:String = UUID.randomUUID().toString
+        val requestId: String = UUID.randomUUID().toString
         val payload = result(futureClient() flatMap { ws =>
           val docValue: List[String] = sourceDocument.split("\n").toList
           broker !!
@@ -115,7 +153,7 @@ class SbteoServerSpecs extends Specification {
 
       "when stopped" should {
         "not accept socket connections" in new GivenSocketServer with GivenApiClient {
-          startedServer.stop()
+          givenStartedServer.stop()
 
           def attemptConnect(): Unit = {
             val webSocket: WebSocket = result(futureClient(), fromSeconds(10))
