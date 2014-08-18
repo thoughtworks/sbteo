@@ -14,13 +14,10 @@ import net.liftweb.json.JsonDSL._
 import net.liftweb.json.{compact, parse, render}
 import org.specs2.mutable._
 
-import scala.collection.JavaConversions._
-
-
 class SbteoServerSpecs extends Specification {
   sequential
 
-  def clientPing(broker: Broker[String], id: String): (WebSocket) => Future[String] = {
+  def sendPing(broker: Broker[String], id: String): (WebSocket) => Future[String] = {
     ws =>
       broker !!
         compact(render(
@@ -29,6 +26,20 @@ class SbteoServerSpecs extends Specification {
 
       ws.messages.?
   }
+
+  def sendAutoComplete(broker: Broker[String], requestId: String, row: Int, column: Int = 1, document: String): (WebSocket) => Future[String] = { ws =>
+    val docValue: List[String] = document.split("\n").toList
+    broker !!
+      compact(render(
+        ("requestId" -> requestId) ~
+          ("type" -> "auto-complete") ~
+          ("doc" -> docValue) ~
+          ("position" ->
+            ("row" -> row) ~
+              ("column" -> column))))
+    ws.messages.?
+  }
+
 
   "A web socket server" should {
     "when not started" should {
@@ -41,11 +52,11 @@ class SbteoServerSpecs extends Specification {
         "respond to ping on different socket" in new GivenSocketServer with GivenApiClient with GivenRuntimeConfiguration {
           givenSystemProperty("sbteo.endpoint", "localhost:8889")
           givenStartedServer
-          val r = result(futureClient(port = 8889)
-            flatMap clientPing(broker, UUID.randomUUID().toString)
+          val jv = result(futureClient(port = 8889)
+            flatMap sendPing(broker, UUID.randomUUID().toString)
             map { s => parse(s)}, fromSeconds(1))
 
-          r \ "error" must beEqualTo(JNothing)
+          jv \ "error" must beEqualTo(JNothing)
         }
       }
     }
@@ -62,7 +73,7 @@ class SbteoServerSpecs extends Specification {
         givenStartedServer
         val requestId = UUID.randomUUID().toString
 
-        private val payload: String = result(futureClient() flatMap clientPing(broker, requestId), fromSeconds(1))
+        private val payload: String = result(futureClient() flatMap sendPing(broker, requestId), fromSeconds(1))
 
         var json = parse(payload)
         (json \ "requestId" values) must beEqualTo(requestId)
@@ -75,17 +86,7 @@ class SbteoServerSpecs extends Specification {
       "responds to autocomplete" in new GivenSocketServer with GivenApiClient {
         givenStartedServer
         val requestId: String = UUID.randomUUID().toString
-        val payload = result(futureClient() flatMap { ws =>
-          broker !!
-            compact(render(
-              ("requestId" -> requestId) ~
-                ("type" -> "auto-complete") ~
-                ("doc" -> List("")) ~
-                ("position" ->
-                  ("row" -> 1) ~
-                    ("column" -> 1))))
-          ws.messages.?
-        }, fromSeconds(10))
+        val payload = result(futureClient() flatMap sendAutoComplete(broker, requestId, 1,1, ""), fromSeconds(10))
 
         val json = parse(payload)
 
@@ -103,18 +104,7 @@ class SbteoServerSpecs extends Specification {
         givenStartedServer
 
         val requestId: String = UUID.randomUUID().toString
-        val payload = result(futureClient() flatMap { ws =>
-          val docValue: List[String] = sourceDocument.split("\n").toList
-          broker !!
-            compact(render(
-              ("requestId" -> requestId) ~
-                ("type" -> "auto-complete") ~
-                ("doc" -> docValue) ~
-                ("position" ->
-                  ("row" -> 1) ~
-                    ("column" -> 1))))
-          ws.messages.?
-        }, fromSeconds(10))
+        val payload = result(futureClient() flatMap sendAutoComplete(broker, requestId, 1, 1, sourceDocument), fromSeconds(10))
 
         val json = parse(payload)
 
