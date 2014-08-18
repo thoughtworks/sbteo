@@ -9,7 +9,7 @@ import net.liftweb.json._
 trait JsonApi {
   implicit val formats = net.liftweb.json.DefaultFormats
 
-  def autocomplete(doc: Seq[String], position: CursorPosition): Seq[AutoCompletion]
+  def autocomplete(doc: Seq[String], position: CursorPosition): Either[Seq[AutoCompletion], Throwable]
 
   def jsonApi(req: JValue, next: Function[JValue, Unit]): Unit = {
     val unkRequest: UnknownRequest = req.extract[UnknownRequest]
@@ -23,7 +23,12 @@ trait JsonApi {
 
   def api(req: SbteoRequest, f: Function[SbteoResponse, Unit]): Unit = {
     f(req match {
-      case ac@AutoCompleteRequest(_, _, doc, position, _) => new AutoCompleteResponse(ac, autocomplete(doc, position))
+      case ac@AutoCompleteRequest(_, _, doc, position, _) => {
+        autocomplete(doc, position) match {
+          case Left(result) => new AutoCompleteResponse(ac, result)
+          case Right(e) => new ErrorResponse(ac, e)
+        }
+      }
       case ping@PingRequest(_, _) => new PingResponse(ping)
       case unk => new UnknownResponse(unk)
     })
@@ -81,6 +86,11 @@ object JsonApi {
                              error: String = "unknown request"
                               ) extends SbteoResponse {
     def this(req: SbteoRequest) = this(req.requestId, UUID.randomUUID().toString, req.`type`)
+  }
+
+  case class ErrorResponse(requestId:String, responseId: String, e:Throwable, `type`: String = "error") extends SbteoResponse{
+    def this(req: SbteoRequest, e:Throwable) = this(req.requestId, UUID.randomUUID().toString, e)
+
   }
 
 

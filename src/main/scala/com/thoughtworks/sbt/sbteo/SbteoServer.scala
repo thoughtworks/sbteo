@@ -31,7 +31,7 @@ trait JsonProtocol {
   }
 }
 
-class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with Api {
+class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with Api with StubApi {
 
   def receive = {
     case event: HttpRequestEvent =>

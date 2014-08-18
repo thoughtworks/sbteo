@@ -2,17 +2,18 @@ package com.thoughtworks.sbt.sbteo
 
 import java.util.UUID
 
-import com.thoughtworks.sbt.sbteo.steps.{GivenApiClient, GivenSocketServer}
+import com.thoughtworks.sbt.sbteo.steps._
 import com.twitter.finagle.ChannelWriteException
 import com.twitter.finagle.websocket.WebSocket
 import com.twitter.util.Await.result
 import com.twitter.util.Duration.fromSeconds
-import net.liftweb.json.JsonAST.{JValue, JNothing}
+import net.liftweb.json.JsonAST.{JNothing, JValue}
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json.{compact, parse, render}
 import org.specs2.mutable._
 
-class SteoServerSpecification extends Specification {
+
+class SbteoServerSpecs extends Specification {
   sequential
 
   "A web socket server" should {
@@ -46,6 +47,7 @@ class SteoServerSpecification extends Specification {
 
         var json = parse(payload)
         (json \ "requestId" values) must beEqualTo(requestId)
+
         (json \ "responseId" values) must not beNull
 
         json \ "error" must beEqualTo(JNothing)

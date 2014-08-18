@@ -1,17 +1,14 @@
-package com.thoughtworks.cloud9.autocomplete
+package com.thoughtworks.sbt.sbteo
 
 import java.io.File
 import java.net.URLClassLoader
 import java.util.jar.JarFile
 
-import scala.reflect.internal.util.BatchSourceFile
 import scala.tools.nsc.Settings
-import scala.tools.nsc.interactive.{Global, Response}
 import scala.tools.nsc.io.VirtualDirectory
-import scala.tools.nsc.reporters.ConsoleReporter
-import scala.tools.nsc.util.OffsetPosition
 
-class Main {
+
+class BasicSettings {
 
   /*
  * For a given FQ classname, trick the resource finder into telling us the containing jar.
@@ -71,15 +68,15 @@ class Main {
       if (nestedClassPath eq null) {
         Nil
       } else {
-        nestedClassPath.split(" ").map { f => new File(relativeRoot, f).getAbsolutePath }.toList
+        nestedClassPath.split(" ").map { f => new File(relativeRoot, f).getAbsolutePath}.toList
       }
     } else {
       Nil
     }) ::: classPath.tail.flatten
   }
 
-  def main(args: Array[String]) {
-    val target = new VirtualDirectory("", None)
+  lazy val settings: Settings = {
+    val target = new VirtualDirectory("(memory)", None)
 
     val settings = new Settings
 
@@ -87,37 +84,6 @@ class Main {
     settings.outputDirs.setSingleOutput(target)
     settings.bootclasspath.value = pathList.mkString(File.pathSeparator)
     settings.classpath.value = (pathList ::: impliedClassPath).mkString(File.pathSeparator)
-
-    val reporter = new ConsoleReporter(settings)
-    val compiler = new Global(settings, reporter)
-
-    val code =
-      """
-         |class X {
-         |  def a(){
-         |    /*!1!*/
-         |    val x = 0;
-         |    this./*!2!*/x
-         |  }
-         |}
-         |
-         |
-      """.stripMargin('|')
-    val source = new BatchSourceFile("<virtual>", code)
-    val response = new Response[Unit]
-    compiler.askReload(List(source), response)
-    response.get.left.foreach( _ => println("yay!"))
-
-    val tcompletion = new Response[List[compiler.Member]]
-    val pos = compiler.ask(() => new OffsetPosition(source, code.indexOf("/*2*/")-1 ))
-
-
-    compiler.askTypeCompletion(pos, tcompletion)
-    tcompletion.get match {
-      case Left(members) => compiler.ask(() => members.foreach( println ) )
-      case Right(e) =>
-        e.printStackTrace
-    }
-    compiler.askShutdown()
+    settings
   }
 }
