@@ -13,7 +13,9 @@ trait TapAfter extends After {
   }
 
   def after = {
-    afters.foreach(f => f())
+    var actions = afters.reverse
+    afters = List()
+    actions.foreach(f => f())
   }
 
 }

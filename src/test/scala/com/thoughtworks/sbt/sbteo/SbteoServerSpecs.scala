@@ -37,24 +37,6 @@ class SbteoServerSpecs extends Specification {
       }
     }
     "when configured using environment vars" should {
-      trait GivenRuntimeConfiguration extends TapAfter {
-        private def immutablePropsRightNow = {
-          mapAsScalaMap(System.getProperties).toMap
-        }
-
-        def givenSystemProperty(name: String, value: String): Unit = {
-          type KeyType = AnyRef
-
-          tapAfter(immutablePropsRightNow, { propsThen: Map[KeyType, AnyRef] =>
-            val newKeys = immutablePropsRightNow.keySet -- propsThen.keySet
-            propsThen.toSeq.map {
-              case (k: KeyType, v: AnyRef) => System.setProperty(k.toString, v.toString)
-            }
-            newKeys.foreach { k => System.clearProperty(k.toString)}
-          })
-          System.setProperty(name, value)
-        }
-      }
       "when started" should {
         "respond to ping on different socket" in new GivenSocketServer with GivenApiClient with GivenRuntimeConfiguration {
           givenSystemProperty("sbteo.endpoint", "localhost:8889")
@@ -74,7 +56,6 @@ class SbteoServerSpecs extends Specification {
       "allows web socket connections" in new GivenSocketServer with GivenApiClient {
         givenStartedServer
         val clientWs: WebSocket = result(futureClient(), fromSeconds(1))
-        clientWs.close()
       }
 
       "responds to ping" in new GivenSocketServer with GivenApiClient {
