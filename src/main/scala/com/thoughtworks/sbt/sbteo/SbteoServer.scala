@@ -83,9 +83,9 @@ class SbteoServer(val logger: sbt.Logger, val server: Option[WebServer] = None) 
     }
     def tryParse(s: String): Option[EndpointType] = {
       s match {
-        case r"(\w*)$iface\:(\d+)$port" => Some((iface, port.toInt))
-        case r"(\w*)$iface" => Some((iface, 8888))
-        case r":(\d+)" => Some(("locahost", 8888))
+        case r"(\w+)$iface\:(\d+)$port" => Some((iface, port.toInt))
+        case r"(\w+)$iface" => Some((iface, 8888))
+        case r":(\d+)$port" => Some(("localhost", port.toInt))
         case _ => None
       }
     }

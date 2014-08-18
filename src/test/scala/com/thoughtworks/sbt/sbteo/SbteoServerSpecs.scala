@@ -58,6 +58,12 @@ class SbteoServerSpecs extends Specification {
 
           jv \ "error" must beEqualTo(JNothing)
         }
+        "not responsd to ping when host is blank" in new GivenSocketServer with GivenApiClient with GivenRuntimeConfiguration {
+          givenSystemProperty("sbteo.endpoint", "")
+          givenStartedServer
+          val jv = result(futureClient(port = 8888) flatMap sendPing(broker, UUID.randomUUID().toString) map { s => parse(s)}, fromSeconds(1))
+          jv \ "error" must beEqualTo(JNothing)
+        }
       }
     }
     "when started" should {
