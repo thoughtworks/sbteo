@@ -2,9 +2,8 @@ package com.thoughtworks.sbt.sbteo
 
 import java.util.concurrent.atomic.AtomicReference
 
-import com.typesafe.config.ConfigFactory
+import sbt.Keys._
 import sbt._
-import Keys._
 
 object SbteoPlugin extends sbt.AutoPlugin {
 
@@ -32,17 +31,15 @@ object SbteoPlugin extends sbt.AutoPlugin {
     }
   }
 
-  def startup(logger: Logger): SbteoServer = {
+  def startup(logger: Logger, classPath: Seq[File]): SbteoServer = {
     new SbteoServer(logger).start()
   }
 
-  def startTask(reference: AtomicReference[Option[SbteoServer]]): Def.Initialize[Task[SbteoServer]] = {
-    streams map { (streams) =>
+  def startTask(reference: AtomicReference[Option[SbteoServer]])(classPath:Classpath, streams:TaskStreams): SbteoServer = {
       shutdown(streams.log, reference)
-      val server = startup(streams.log)
+      val server = startup(streams.log, classPath.map(_.data))
       reference.set(Option(server))
       server
-    }
   }
 
 
@@ -55,7 +52,7 @@ object SbteoPlugin extends sbt.AutoPlugin {
     System.out println "sbteo baseSettings evaluated"
 
     inConfig(sbteo) {
-      Seq(start <<= startTask(atomicRef)
+      Seq(start <<= (fullClasspath in Compile, streams) map startTask(atomicRef)
         , stop <<= stopTask(atomicRef)
         , onLoad in Global <<= onLoadSetting(atomicRef)
       )

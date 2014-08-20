@@ -9,12 +9,7 @@ trait GivenCompiler extends TapAfter {
 
   type CompilerComponent = ProvidesContextFreeCompiler with ProvidesCleanup
 
-  lazy val theCompiler: Global = {
-    tapAfter[CompilerComponent](new ProvidesContextFreeCompiler with ProvidesCleanup, s => s.cleanup()).compiler
-  }
-
-
-  def compiler: Global = {
-    theCompiler
+  lazy val compiler: Global = {
+    tapAfter[CompilerComponent](new ProvidesContextFreeCompiler with ProvidesBasicCompilerSettings with ProvidesCleanup, s => s.cleanup()).compiler
   }
 }

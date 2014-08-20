@@ -32,7 +32,7 @@ trait JsonProtocol {
   }
 }
 
-class SbteoWireProtocolActor(log:sbt.Logger) extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup {
+class SbteoWireProtocolActor(log:sbt.Logger) extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesBasicCompilerSettings with ProvidesCleanup {
 
   def receive = {
     case event: HttpRequestEvent =>
