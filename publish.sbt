@@ -1,4 +1,4 @@
-publishMavenStyle := false
+publishMavenStyle := true
 
 publishArtifact in Test := false
 
