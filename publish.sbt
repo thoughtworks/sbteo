@@ -12,6 +12,8 @@ publishTo := {
     Some("releases"  at artifactory + "plugins-releases")
 }
 
+credentials += Credentials(Path.userHome / ".ivy2" / ".credentials.commbank")
+
 pomExtra := <url>https://github.com/thoughtworks/sbteo</url>
   <licenses>
     <license>
