@@ -15,12 +15,8 @@ object SbteoWireProtocolActor {
   val dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
   val time = new GregorianCalendar()
 
-  def props(): Props = {
-    Props(classOf[SbteoWireProtocolActor], {
-      var log = ConsoleLogger()
-      log.setLevel(sbt.Level.Debug)
-      log
-    })
+  def props(log: sbt.Logger): Props = {
+    Props(classOf[SbteoWireProtocolActor], log)
   }
 }
 
@@ -59,14 +55,15 @@ class SbteoWireProtocolActor(log:sbt.Logger) extends Actor with JsonProtocol wit
 }
 
 object SbteoServer {
-  def routes(actorSystem: ActorSystem): PartialFunction[SockoEvent, Unit] = {
+
+  def routes(actorSystem: ActorSystem, log:Logger): PartialFunction[SockoEvent, Unit] = {
     Routes({
       case WebSocketHandshake(wsHandshake) => wsHandshake match {
         case Path("/sbt/") =>
           wsHandshake.authorize()
       }
       case WebSocketFrame(wsFrame) =>
-        actorSystem.actorOf(SbteoWireProtocolActor.props()) ! wsFrame
+        actorSystem.actorOf(SbteoWireProtocolActor.props(log)) ! wsFrame
     })
   }
 
@@ -111,7 +108,7 @@ class SbteoServer(val logger: sbt.Logger, val server: Option[WebServer] = None) 
         val actorSystem: ActorSystem = ActorSystem("SbteoServerActorSystem", ConfigFactory.load(), this.getClass.getClassLoader)
         println(endpoint)
         val config: WebServerConfig = new WebServerConfig(port = endpoint._2, hostname = endpoint._1)
-        val webServer: WebServer = new WebServer(config, SbteoServer.routes(actorSystem), actorSystem)
+        val webServer: WebServer = new WebServer(config, SbteoServer.routes(actorSystem, logger), actorSystem)
         webServer.start()
         new SbteoServer(this.logger, Option(webServer))
     }
