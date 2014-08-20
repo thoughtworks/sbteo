@@ -4,6 +4,14 @@ publishArtifact in Test := false
 
 pomIncludeRepository := { x => false }
 
+publishTo := {
+  val artifactory = "http://commbank.artifactoryonline.com/commbank/"
+  if (version.value.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at artifactory + "plugins-snapshots")
+  else
+    Some("releases"  at artifactory + "plugins-releases")
+}
+
 pomExtra := <url>https://github.com/thoughtworks/sbteo</url>
   <licenses>
     <license>
