@@ -11,7 +11,7 @@ trait GivenApi {
   def compiler: Global
 
   lazy val api: Api = {
-    new RealApi {
+    new RealApi with ProvidesStubLogger {
       def compiler: Global = self.compiler
     }
   }

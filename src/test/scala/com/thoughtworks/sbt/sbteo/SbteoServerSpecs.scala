@@ -110,7 +110,7 @@ class SbteoServerSpecs extends Specification {
         givenStartedServer
 
         val requestId: String = UUID.randomUUID().toString
-        val payload = result(futureClient() flatMap sendAutoComplete(broker, requestId, 1, 1, sourceDocument), fromSeconds(10))
+        val payload = result(futureClient() flatMap sendAutoComplete(broker, requestId, 1, 0, sourceDocument), fromSeconds(10))
 
         val json = parse(payload)
 

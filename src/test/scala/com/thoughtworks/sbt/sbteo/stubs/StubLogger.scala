@@ -2,9 +2,6 @@ package com.thoughtworks.sbt.sbteo.stubs
 
 import sbt.Level
 
-/**
- * Created by ndrew on 14/08/2014.
- */
 trait StubLogger {
 
   class StubLogger extends Object with sbt.Logger {

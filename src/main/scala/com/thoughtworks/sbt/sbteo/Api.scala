@@ -2,19 +2,17 @@ package com.thoughtworks.sbt.sbteo
 
 import com.thoughtworks.sbt.sbteo.Api._
 
-import scala.collection.SeqView
-
 
 object Api {
 
   case class CursorPosition(row: Int, column: Int) {
-    val zeroIndexedRow = row-1
-    val zeroIndexedCol = column -1
-    
+    val zeroIndexedRow = row
+    val zeroIndexedCol = column
+
     def positionIn(sourceDocument: Seq[String]): Int = {
-      def truncateRow(s:String, idx:Int): Int ={
-        val hasPreviousLine = if(idx == 0) 0 else 1
-        if( idx < zeroIndexedRow){
+      def truncateRow(s: String, idx: Int): Int = {
+        val hasPreviousLine = if (idx == 0) 0 else 1
+        if (idx < zeroIndexedRow) {
           s.length()
         }
         else {
@@ -22,17 +20,11 @@ object Api {
         } + hasPreviousLine
       }
       val sumRowLength: (Int, (String, Int)) => Int = {
-        case (acc, (e, i)) => {
-          acc + truncateRow(e, i)
-        }
-        case (acc, _) => {
-          acc
-        }
-        case _ => {
-          0
-        }
+        case (acc, (e, i)) => acc + truncateRow(e, i)
+        case (acc, _) => acc
+        case _ => 0
       }
-      sourceDocument.take(row).view.zipWithIndex.foldLeft(1)(sumRowLength)
+      sourceDocument.take(zeroIndexedRow+1).view.zipWithIndex.foldLeft(0)(sumRowLength)
     }
   }
 

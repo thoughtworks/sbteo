@@ -9,13 +9,18 @@ import net.liftweb.json._
 import org.mashupbots.socko.events.{HttpRequestEvent, SockoEvent, WebSocketFrameEvent}
 import org.mashupbots.socko.routes._
 import org.mashupbots.socko.webserver.{WebServer, WebServerConfig}
+import sbt.{Logger, ConsoleLogger}
 
 object SbteoWireProtocolActor {
   val dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
   val time = new GregorianCalendar()
 
   def props(): Props = {
-    Props(new SbteoWireProtocolActor)
+    Props(classOf[SbteoWireProtocolActor], {
+      var log = ConsoleLogger()
+      log.setLevel(sbt.Level.Debug)
+      log
+    })
   }
 }
 
@@ -31,7 +36,7 @@ trait JsonProtocol {
   }
 }
 
-class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup {
+class SbteoWireProtocolActor(log:sbt.Logger) extends Actor with JsonProtocol with JsonApi with RealApi with ProvidesContextFreeCompiler with ProvidesCleanup {
 
   def receive = {
     case event: HttpRequestEvent =>
@@ -50,7 +55,7 @@ class SbteoWireProtocolActor extends Actor with JsonProtocol with JsonApi with R
     cleanup()
   }
 
-
+  def logger: Logger = log
 }
 
 object SbteoServer {
@@ -63,6 +68,13 @@ object SbteoServer {
       case WebSocketFrame(wsFrame) =>
         actorSystem.actorOf(SbteoWireProtocolActor.props()) ! wsFrame
     })
+  }
+
+  def main (args: Array[String]) {
+    new SbteoServer(ConsoleLogger(sbt.ConsoleOut.systemOut)).start()
+    while(true){
+      Thread.sleep(5000)
+    }
   }
 }
 

@@ -12,7 +12,7 @@ case class TypeAtResponse(
                            tpe: String
                            )
 
-class InprocessCompiler(compiler: Global) {
+class InprocessCompiler(compiler: Global, log: sbt.Logger) {
 
   private def reload(code: String): BatchSourceFile = {
     val file = new BatchSourceFile("default", code)
@@ -26,54 +26,111 @@ class InprocessCompiler(compiler: Global) {
     response
   }
 
-  def autocomplete(code: String, p: Int): Either[Seq[AutoCompletion],Throwable] = {
+  def autocomplete(code: String, p: Int): Either[Seq[AutoCompletion], Throwable] = {
     def completion(f: (compiler.Position, compiler.Response[List[compiler.Member]]) ⇒ Unit,
-                   pos: compiler.Position):Either[Seq[AutoCompletion],Throwable] = {
+                   pos: compiler.Position): Either[Seq[AutoCompletion], Throwable] = {
 
       withResponse[List[compiler.Member]](r ⇒ f(pos, r)).get match {
         case Left(members) ⇒ compiler.ask(() ⇒ {
-          Left(members.map(member ⇒
+          Left(members.map(member ⇒ {
             AutoCompletion(
               symbol = member.sym.decodedName,
               signature = member.sym.signatureString,
               documentation = Documentation(""),
-              tags = List(),
-              priority = 1
+              tags = tagsForMember(member).toList,
+              priority = if (member.implicitlyAdded) 2 else 1
             )
-          ))
+          }))
         })
         case Right(e) ⇒
           Right(e)
       }
     }
     def typeCompletion(pos: compiler.Position) = {
-      completion(compiler.askTypeCompletion, pos)
+      completion(compiler.askTypeCompletion, pos).left.map(_.sortBy(_.priority))
     }
 
     def scopeCompletion(pos: compiler.Position) = {
-      completion(compiler.askScopeCompletion, pos)
+      completion(compiler.askScopeCompletion, pos).left.map(_.sortBy(_.priority))
     }
 
     // inspired by scala-ide
     // https://github.com/scala-ide/scala-ide/blob/4.0.0-m3-luna/org.scala-ide.sdt.core/src/org/scalaide/core/completion/ScalaCompletions.scala#L170
     askTypeAt(code, p, p) {
       (tree, pos) ⇒ tree match {
-      case compiler.New(name) ⇒ typeCompletion(name.pos)
-      case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒
-        typeCompletion(qualifier.pos)
-      case compiler.Import(expr, _) ⇒ typeCompletion(expr.pos)
-      case compiler.Apply(fun, _) ⇒
-        fun match {
-          case compiler.Select(qualifier: compiler.New, _) ⇒ typeCompletion(qualifier.pos)
-          case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒
-            typeCompletion(qualifier.pos)
-          case _ ⇒ scopeCompletion(fun.pos)
+        case compiler.New(name) ⇒ {
+          log.debug {
+            s"ast/New: $name"
+          }
+          typeCompletion(name.pos)
         }
-      case _ ⇒ scopeCompletion(pos)
-    }
+        case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒ {
+          log.debug {
+            s"ast/Select: $qualifier"
+          }
+          typeCompletion(qualifier.pos)
+        }
+        case compiler.Import(expr, _) ⇒ {
+          log.debug {
+            s"ast/Import: $expr"
+          }
+          typeCompletion(expr.pos)
+        }
+        case compiler.Apply(fun, _) ⇒ {
+          log.debug {
+            s"ast/Apply: $fun"
+          }
+          fun match {
+            case compiler.Select(qualifier: compiler.New, _) ⇒ {
+              log.debug {
+                s"ast/Apply/Select/New: $qualifier"
+              }
+              typeCompletion(qualifier.pos)
+            }
+            case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒ {
+              log.debug {
+                s"ast/Apply/Select: $qualifier"
+              }
+              typeCompletion(qualifier.pos)
+            }
+            case x ⇒ {
+              log.debug {
+                s"ast: $x"
+              }
+              scopeCompletion(fun.pos)
+            }
+          }
+        }
+        case x ⇒ {
+          log.debug {
+            s"ast/Apply/Select: $x"
+          }
+          scopeCompletion(pos)
+        }
+      }
     } {
       pos => Some(scopeCompletion(pos))
     }.getOrElse(Left(List()))
+  }
+
+  private type SymbolType = compiler.Symbol
+  private val tagSpecs = Map(
+    ((s: SymbolType) => s.isClass) -> "class",
+    ((s: SymbolType) => s.isAnonymousFunction) -> "function",
+    ((s: SymbolType) => s.isMethod) -> "method",
+    ((s: SymbolType) => s.isAccessor) -> "getter",
+    ((s: SymbolType) => s.isSetter) -> "setter",
+    ((s: SymbolType) => s.isPrivate)-> "private",
+    ((s: SymbolType) => s.isLocal) -> "local",
+    ((s: SymbolType) => s.isPackage || s.isPackageObjectOrClass) -> "package"
+  )
+  def tagsForMember(member: compiler.Member): Seq[String] = {
+    val sym: compiler.Symbol = member.sym
+
+    tagSpecs.
+      filter { case (k, v) => k(sym)}.
+      map { case (k, v) => v}.
+      toSeq
   }
 
   def typeAt(code: String, start: Int, end: Int): Option[TypeAtResponse] = {

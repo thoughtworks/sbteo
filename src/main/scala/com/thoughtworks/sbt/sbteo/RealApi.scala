@@ -3,9 +3,9 @@ package com.thoughtworks.sbt.sbteo
 import com.thoughtworks.sbt.sbteo.Api.{AutoCompletion, CursorPosition}
 
 
-trait RealApi extends Api with RequiresCompiler {
+trait RealApi extends Api with RequiresCompiler with RequiresLogger {
 
-  lazy val theCompleter = new AutoCompleter(new InprocessCompiler(compiler))
+  lazy val theCompleter = new AutoCompleter(new InprocessCompiler(compiler, logger))
 
   def completer: AutoCompleter = theCompleter
 

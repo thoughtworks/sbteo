@@ -6,7 +6,7 @@ import com.thoughtworks.sbt.sbteo.Api._
 import com.thoughtworks.sbt.sbteo.JsonApi._
 import net.liftweb.json._
 
-trait JsonApi {
+trait JsonApi extends RequiresLogger {
   implicit val formats = net.liftweb.json.DefaultFormats
 
   def autocomplete(doc: Seq[String], position: CursorPosition): Either[Seq[AutoCompletion], Throwable]
@@ -26,7 +26,10 @@ trait JsonApi {
       case ac@AutoCompleteRequest(_, _, doc, position, _) => {
         autocomplete(doc, position) match {
           case Left(result) => new AutoCompleteResponse(ac, result)
-          case Right(e) => new ErrorResponse(ac, e)
+          case Right(e) => {
+            logger.trace(e)
+            new ErrorResponse(ac, e)
+          }
         }
       }
       case ping@PingRequest(_, _) => new PingResponse(ping)

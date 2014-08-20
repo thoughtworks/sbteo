@@ -22,15 +22,15 @@ class CursorPositionSpecs extends Specification {
       trait Subject extends SourceSubject with Scope {
         def sourceDocument = ""
       }
-      "at position 1 1" in new Subject {
-        positionOf(1, 1) must beEqualTo(1)
+      "at position 0 0" in new Subject {
+        positionOf(0, 0) must beEqualTo(0)
       }
-      "at position 2 2" in new Subject {
-        positionOf(2, 2) must beEqualTo(1)
+      "at position 1 1" in new Subject {
+        positionOf(1, 1) must beEqualTo(0)
       }
 
-      "at position 1 10" in new Subject {
-        positionOf(1, 10) must beEqualTo(1)
+      "at position 0 9" in new Subject {
+        positionOf(0, 9) must beEqualTo(0)
       }
 
     }
@@ -38,46 +38,41 @@ class CursorPositionSpecs extends Specification {
       trait Subject extends SourceSubject with GivenBasicSource with Scope
       "text" should {
         "at position 0 0 = 'c'" in new Subject {
-          textAtSource(0,0) must be_==('c')
+          textAtSource(0,0) must be_==('\n')
         }
-
         "at position 1 1" in new Subject {
-          textAtSource(1,1) must be_==('c')
+          textAtSource(1,1) must be_==('l')
         }
-
-        "at position 2 1" in new Subject {
-          textAtSource(2,1) must be_==('l')
+        "at position 1 3" in new Subject {
+          textAtSource(1,3) must be_==('s')
         }
         "at position 2 3" in new Subject {
-          textAtSource(2,3) must be_==('s')
-        }
-        "at position 3 3" in new Subject {
-          textAtSource(3,3) must be_==('d')
+          textAtSource(2,3) must be_==('d')
         }
       }
       "cursor position" should {
-        "at position 1 1" in new Subject {
-          private val actual: Int = positionOf(1, 1)
-          actual.must(be_==(1))
+        "at position 0 0" in new Subject {
+          positionOf(0, 0).must(be_==(0))
         }
 
-        "at position 2 1" in new Subject {
-          positionOf(2, 1) must be_==(2)
+        "at position 1 0" in new Subject {
+          positionOf(1, 0) must be_==(1)
         }
-        "at position 2 2" in new Subject {
-          positionOf(2, 2) must be_==(positionOf(2, 1) + 1)
+        "at position 1 1" in new Subject {
+          positionOf(1, 1) must be_==(positionOf(1, 0) + 1)
         }
+
         "near EOL" in new Subject {
-          positionOf(2, 10) must be_==(positionOf(2, 9) + 1)
+          positionOf(1, 9) must be_==(positionOf(1, 8) + 1)
         }
         "near EOL (explicit)" in new Subject {
-          positionOf(2, 10) must beEqualTo(11)
+          positionOf(1, 9) must beEqualTo(10)
         }
         "on EOL" in new Subject {
-          positionOf(2, 11) must be_==(positionOf(2, 10))
+          positionOf(1, 10) must be_==(positionOf(1, 9))
         }
         "on SOL" in new Subject {
-          positionOf(3, 1) must be_==(positionOf(2, 10))
+          positionOf(2, 0) must be_==(positionOf(1, 9))
         }
 
       }

@@ -1,8 +1,7 @@
 package com.thoughtworks.sbt.sbteo
 
-import com.thoughtworks.sbt.sbteo.Api.{AutoCompletion, CursorPosition}
-import com.thoughtworks.sbt.sbteo.steps.{GivenCompiler, GivenBasicSource, GivenApi}
-import org.specs2.matcher.LeftCheckedMatcher
+import com.thoughtworks.sbt.sbteo.Api.CursorPosition
+import com.thoughtworks.sbt.sbteo.steps.{GivenApi, GivenBasicSource, GivenCompiler}
 import org.specs2.mutable._
 import org.specs2.specification.Scope
 
@@ -19,7 +18,7 @@ class ApiSpecs extends Specification {
 
         "the suggestions at import statement" should {
           "not suggest local vars" in new Subject {
-            suggestionsAt(1,1).left.get.map(ac => ac.symbol) must not contain("x")
+            suggestionsAt(1, 1).left.get.map(ac => ac.symbol) must not contain "x"
           }
           "suggest classes" in new Subject {
             suggestionsAt(1,1).left.get.map(ac => ac.symbol) must contain("X")
@@ -27,10 +26,10 @@ class ApiSpecs extends Specification {
         }
         "the suggestions at inside a() method" should {
           "suggest variables" in new Subject {
-            suggestionsAt(5,9) must beLeft
+            suggestionsAt(4,8) must beLeft
           }
           "contain a local variable" in new Subject {
-            suggestionsAt(5, 9).left.get.map(ac => ac.symbol) must contain("x")
+            suggestionsAt(4, 8).left.get.map(ac => ac.symbol) must contain("x")
 
           }
         }
