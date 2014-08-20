@@ -5,7 +5,7 @@ publishArtifact in Test := false
 pomIncludeRepository := { x => false }
 
 publishTo := {
-  val artifactory = "http://commbank.artifactoryonline.com/commbank/"
+  val artifactory = "https://commbank.artifactoryonline.com/commbank/"
   if (version.value.trim.endsWith("SNAPSHOT"))
     Some("snapshots" at artifactory + "plugins-snapshots")
   else
