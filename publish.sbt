@@ -1,4 +1,6 @@
-publishMavenStyle := true
+import bintray.Keys._
+
+publishMavenStyle := false
 
 publishArtifact in Test := false
 
@@ -6,13 +8,13 @@ pomIncludeRepository := { x => false }
 
 bintrayPublishSettings
 
-bintray.Keys.repository  := "sbt-plugins"
+repository in bintray  := "sbt-plugins"
 
-bintray.Keys.bintrayOrganization := None
+bintrayOrganization in bintray := None
 
 licenses  += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 
-pomExtra := 
+pomExtra :=
   <scm>
     <url>git@github.com:thoughtworks/sbteo.git</url>
     <connection>scm:git:git@github.com:thoughtworks/sbteo.git</connection>
