@@ -1,16 +1,22 @@
 package com.thoughtworks.sbt.sbteo
 
-import java.util.concurrent.{Callable, FutureTask, TimeUnit, TimeoutException}
+import java.util.concurrent.{TimeoutException, TimeUnit, Callable, FutureTask}
 
-import com.thoughtworks.sbt.sbteo.Api.{AutoCompletion, Documentation}
+import com.thoughtworks.sbt.sbteo.Api.{Documentation, AutoCompletion}
 
 import scala.concurrent.duration.Duration
 import scala.reflect.internal.util.BatchSourceFile
-import scala.tools.nsc.interactive.{Global, Response}
+import scala.tools.nsc.interactive.{Response, Global}
 
+/*
+ * This code is heavily indebted to https://github.com/MasseGuillaume/ScalaKata
+ * which in turn builds on ScalaIDE, and Ensime
+ *
+ */
 case class TypeAtResponse(
                            tpe: String
                            )
+
 
 class InprocessCompiler(compiler: Global, log: sbt.Logger) {
 
@@ -58,55 +64,47 @@ class InprocessCompiler(compiler: Global, log: sbt.Logger) {
     // https://github.com/scala-ide/scala-ide/blob/4.0.0-m3-luna/org.scala-ide.sdt.core/src/org/scalaide/core/completion/ScalaCompletions.scala#L170
     askTypeAt(code, p, p) {
       (tree, pos) ⇒ tree match {
-        case compiler.New(name) ⇒ {
+        case compiler.New(name) ⇒
           log.debug {
             s"ast/New: $name"
           }
           typeCompletion(name.pos)
-        }
-        case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒ {
+        case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒
           log.debug {
             s"ast/Select: $qualifier"
           }
           typeCompletion(qualifier.pos)
-        }
-        case compiler.Import(expr, _) ⇒ {
+        case compiler.Import(expr, _) ⇒
           log.debug {
             s"ast/Import: $expr"
           }
           typeCompletion(expr.pos)
-        }
-        case compiler.Apply(fun, _) ⇒ {
+        case compiler.Apply(fun, _) ⇒
           log.debug {
             s"ast/Apply: $fun"
           }
           fun match {
-            case compiler.Select(qualifier: compiler.New, _) ⇒ {
+            case compiler.Select(qualifier: compiler.New, _) ⇒
               log.debug {
                 s"ast/Apply/Select/New: $qualifier"
               }
               typeCompletion(qualifier.pos)
-            }
-            case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒ {
+            case compiler.Select(qualifier, _) if qualifier.pos.isDefined && qualifier.pos.isRange ⇒
               log.debug {
                 s"ast/Apply/Select: $qualifier"
               }
               typeCompletion(qualifier.pos)
-            }
-            case x ⇒ {
+            case x ⇒
               log.debug {
                 s"ast: $x"
               }
               scopeCompletion(fun.pos)
-            }
           }
-        }
-        case x ⇒ {
+        case x ⇒
           log.debug {
             s"ast/Apply/Select: $x"
           }
           scopeCompletion(pos)
-        }
       }
     } {
       pos => Some(scopeCompletion(pos))
@@ -167,10 +165,9 @@ class InprocessCompiler(compiler: Global, log: sbt.Logger) {
 
       response.get match {
         case Left(tree) ⇒ Some(f(tree, rpos))
-        case Right(e) ⇒ {
+        case Right(e) ⇒
           e.printStackTrace()
-          fb(rpos)
-        };
+          fb(rpos);
       }
     }
   }
